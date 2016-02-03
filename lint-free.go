@@ -2,12 +2,18 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"regexp"
 )
+
+type config struct {
+	Golint string   `json:"golint"`
+	Ignore []string `json:"ignore"`
+}
 
 func filter(line string, regs []*regexp.Regexp) bool {
 	f := false
@@ -19,7 +25,7 @@ func filter(line string, regs []*regexp.Regexp) bool {
 	return f
 }
 
-func configRead(fp string) []*regexp.Regexp {
+func configRead(fp string) (string, []*regexp.Regexp) {
 	file, err := os.Open(fp)
 	if err != nil {
 		log.Fatal("There was an issue reading your config file, expected it to be at ", fp)
@@ -33,15 +39,19 @@ func configRead(fp string) []*regexp.Regexp {
 		log.Fatal(err)
 	}
 
-	for _, line := range byteLines(f) {
-		l := line[:len(line)-1] // chomp \n
-		if l != "" {
-			regx, _ := regexp.Compile(l)
-			r = append(r, regx)
-		}
+	cfg := new(config)
+	err = json.Unmarshal(f, &cfg)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	return r
+	for _, line := range cfg.Ignore {
+		regx, _ := regexp.Compile(line)
+		r = append(r, regx)
+	}
+
+	return cfg.Golint, r
 }
 
 func byteLines(data []byte) []string {
@@ -57,9 +67,9 @@ func byteLines(data []byte) []string {
 
 func main() {
 	configPath := os.Getenv("HOME") + "/.golint-free"
-	regs := configRead(configPath)
+	golintPath, regs := configRead(configPath)
 
-	golint := exec.Command("golint", os.Args[1:]...)
+	golint := exec.Command(golintPath, os.Args[1:]...)
 	output, err := golint.Output()
 	if err != nil {
 		log.Fatal(err)
