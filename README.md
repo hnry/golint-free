@@ -23,8 +23,8 @@ Example warning:
 If I wanted both to be suppressed I would edit `.golint-free` to look like this:
 
     {
-      golint: '/home/hnry/go/bin/golint',
-      ignore [
+      "golint": "/Users/hnry/go/bin/golint",
+      "ignore": [
         "don't use underscores in Go names",
         "should have comment or be unexported"
       ]
